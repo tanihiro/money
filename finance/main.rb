@@ -1,6 +1,8 @@
 require "rubygems"
 require "google/api_client"
 require "google_drive"
+require "nokogiri"
+require "open-uri"
 
 client = Google::APIClient.new
 auth = client.authorization
@@ -20,3 +22,19 @@ access_token = auth.access_token
 session = GoogleDrive.login_with_oauth(access_token)
 
 ws = session.spreadsheet_by_key('1IgHX8ke8Zlh0uIoF5BD5s3aNT_wWiBpbzFXVNaFby3g').worksheets[0]
+
+ws.rows.each.with_index(1) do |row, index|
+  url = row[3]
+  next unless url =~ /https?:\/\//
+
+  html = Nokogiri::HTML(open(url))
+  name = html.css('h1').first.content
+  price = html.css('.stoksPrice')[1].content
+
+  p "name: #{name}, price: #{price}"
+
+  ws[index, 2] = name
+  ws[index, 3] = price
+end
+
+ws.save
